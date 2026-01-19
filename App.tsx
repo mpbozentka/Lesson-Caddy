@@ -7,6 +7,7 @@ import LessonDetails from './components/LessonDetails';
 import StudentManager from './components/StudentManager';
 import { Lesson, Recording, Student } from './types';
 import { summarizeLesson } from './services/geminiService';
+import { supabase } from './services/supabaseClient';
 
 const App: React.FC = () => {
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -112,6 +113,25 @@ const App: React.FC = () => {
     try {
       const summary = await summarizeLesson(activeLesson.recordings);
       const completedLesson: Lesson = { ...activeLesson, summary, status: 'completed' };
+
+      // Save to Supabase
+      const student = students.find(s => s.id === activeLesson.studentId);
+      const { error } = await supabase
+        .from('Lesson-Caddy table')
+        .insert([
+          {
+            Student: student?.fullName || 'Unknown Student',
+            summary: summary,
+            date: new Date().toISOString()
+          }
+        ]);
+
+      if (error) {
+        console.error("Error saving to Supabase:", error);
+      } else {
+        console.log("Successfully saved to Supabase");
+      }
+
       setLessons(prev => [completedLesson, ...prev]);
       setActiveLesson(completedLesson);
       setCurrentView('details');
@@ -123,16 +143,16 @@ const App: React.FC = () => {
   const activeStudent = activeLesson ? students.find(s => s.id === activeLesson.studentId) : undefined;
 
   return (
-    <Layout 
-      onHomeClick={() => setCurrentView('list')} 
+    <Layout
+      onHomeClick={() => setCurrentView('list')}
       onStudentsClick={() => setCurrentView('students')}
       activeView={currentView}
     >
       {currentView === 'list' && (
-        <LessonList 
-          lessons={lessons} 
+        <LessonList
+          lessons={lessons}
           students={students}
-          onSelectLesson={(l) => { setActiveLesson(l); setCurrentView(l.status === 'active' ? 'active' : 'details'); }} 
+          onSelectLesson={(l) => { setActiveLesson(l); setCurrentView(l.status === 'active' ? 'active' : 'details'); }}
           onNewLesson={handleStartLessonFlow}
           onDeleteLesson={handleDeleteLesson}
         />
@@ -143,7 +163,7 @@ const App: React.FC = () => {
           <h2 className="text-2xl font-bold text-slate-800">Who is this lesson for?</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {students.map(s => (
-              <button 
+              <button
                 key={s.id}
                 onClick={() => handleSelectStudentForLesson(s.id)}
                 className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:border-emerald-500 hover:bg-emerald-50 transition-all text-left font-bold text-lg flex items-center space-x-4"
@@ -155,7 +175,7 @@ const App: React.FC = () => {
               </button>
             ))}
           </div>
-          <button 
+          <button
             onClick={() => setCurrentView('list')}
             className="text-slate-400 font-medium hover:text-slate-600"
           >
@@ -163,9 +183,9 @@ const App: React.FC = () => {
           </button>
         </div>
       )}
-      
+
       {currentView === 'active' && activeLesson && (
-        <ActiveLesson 
+        <ActiveLesson
           lesson={activeLesson}
           student={activeStudent}
           onAddRecording={handleAddRecording}
@@ -176,7 +196,7 @@ const App: React.FC = () => {
       )}
 
       {currentView === 'details' && activeLesson && (
-        <LessonDetails 
+        <LessonDetails
           lesson={activeLesson}
           student={activeStudent}
           onBack={() => setCurrentView('list')}
@@ -184,10 +204,10 @@ const App: React.FC = () => {
       )}
 
       {currentView === 'students' && (
-        <StudentManager 
-          students={students} 
-          onAddStudent={handleAddStudent} 
-          onDeleteStudent={handleDeleteStudent} 
+        <StudentManager
+          students={students}
+          onAddStudent={handleAddStudent}
+          onDeleteStudent={handleDeleteStudent}
         />
       )}
     </Layout>
