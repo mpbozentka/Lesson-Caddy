@@ -1,0 +1,7 @@
+{
+  "name": "Lesson Caddy",
+  "description": "A smart golf lesson assistant that records, transcribes, and summarizes your practice sessions using AI.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
